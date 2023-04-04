@@ -1,5 +1,7 @@
 [package]
 name = "apikit"
+license = "MIT"
+description = "A toolkit for building HTTP APIs with Axum"
 version = "0.1.0"
 edition = "2021"
 
