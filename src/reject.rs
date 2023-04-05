@@ -1,4 +1,6 @@
 //! Commonly used rejections and recovery procedures.
+use std::fmt::Display;
+
 use axum::http::StatusCode;
 
 use axum::response::{IntoResponse, Response};
@@ -12,7 +14,7 @@ const MESSAGE_NOT_FOUND: &str = "not found";
 const MESSAGE_FORBIDDEN: &str = "forbidden";
 const MESSAGE_INTERNAL_SERVER_ERROR: &str = "internal server error";
 
-#[derive(Serialize)]
+#[derive(Debug, Diagnostic, Serialize)]
 #[serde(untagged)]
 pub enum HTTPError {
     BadRequest {
@@ -26,6 +28,26 @@ pub enum HTTPError {
     },
 }
 
+impl Display for HTTPError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::BadRequest { error } => write!(f, "bad request: {}", error),
+            Self::Forbidden => write!(f, "forbidden"),
+            Self::NotFound => write!(f, "not found"),
+            Self::InternalServerError {
+                error,
+                backtrace: Some(backtrace),
+            } => write!(f, "internal server error: {}\n{}", error, backtrace),
+            Self::InternalServerError {
+                error,
+                backtrace: None,
+            } => write!(f, "internal server error: {}", error),
+        }
+    }
+}
+
+impl std::error::Error for HTTPError {}
+
 impl HTTPError {
     pub fn bad_request<S: ToString>(s: S) -> Self {
         Self::BadRequest {
@@ -33,7 +55,7 @@ impl HTTPError {
         }
     }
 
-    pub fn internal_server_error<E: Diagnostic>(e: E) -> Self {
+    pub fn internal_server_error<E: ToString>(e: E) -> Self {
         Self::InternalServerError {
             error: e.to_string(),
             backtrace: None, // TODO: Properly capture backtrace
